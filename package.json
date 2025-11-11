@@ -31,6 +31,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node libs/database/prisma/seed.ts",
     "db:test": "node test-database.js",
+    "env:validate": "node scripts/validate-env.js",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
