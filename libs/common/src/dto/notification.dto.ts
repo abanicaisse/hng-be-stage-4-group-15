@@ -1,16 +1,9 @@
 import { IsEnum, IsUUID, IsString, IsObject, IsOptional, IsInt, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export enum NotificationType {
-  EMAIL = 'email',
-  PUSH = 'push',
-}
-
-export enum NotificationStatus {
-  PENDING = 'pending',
-  DELIVERED = 'delivered',
-  FAILED = 'failed',
-}
+// Re-export Prisma enums for use across the application
+export { NotificationType, NotificationStatus } from '@prisma/client';
+import { NotificationType, NotificationStatus } from '@prisma/client';
 
 export class UserData {
   @ApiProperty()

@@ -35,7 +35,7 @@ export class RetryUtil {
     }
 
     this.logger.error(`${context}: All ${options.maxAttempts} attempts failed`);
-    throw lastError!;
+    throw lastError;
   }
 
   private static sleep(ms: number): Promise<void> {
