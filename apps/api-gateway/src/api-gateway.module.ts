@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { Reflector } from '@nestjs/core';
 import configuration from './config/configuration';
 
 // Shared libraries
@@ -25,6 +26,7 @@ import { LoggingInterceptor, TransformInterceptor } from '@app/common';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      envFilePath: ['.env', 'apps/api-gateway/.env'],
     }),
     ThrottlerModule.forRoot([
       {
@@ -41,6 +43,7 @@ import { LoggingInterceptor, TransformInterceptor } from '@app/common';
     HealthModule,
   ],
   providers: [
+    Reflector,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,

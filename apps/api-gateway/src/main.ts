@@ -1,19 +1,30 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ApiGatewayModule } from './api-gateway.module';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(ApiGatewayModule);
+  const logger = new Logger('APIGateway');
+  const app = await NestFactory.create(ApiGatewayModule, {
+    logger: ['log', 'error', 'warn', 'debug'],
+  });
 
-  app.enableCors();
+  // Get Reflector for AuthGuard
+  const reflector = app.get(Reflector);
+
+  app.enableCors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      forbidNonWhitelisted: true,
       transformOptions: {
         enableImplicitConversion: true,
       },
@@ -22,23 +33,45 @@ async function bootstrap() {
 
   // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('Notification System API')
+    .setTitle('Notification System API Gateway')
     .setDescription('Distributed Notification System - API Gateway')
     .setVersion('1.0')
-    .addBearerAuth()
-    .addTag('Authentication')
-    .addTag('Notifications')
-    .addTag('Health')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addTag('Authentication', 'User authentication endpoints')
+    .addTag('Notifications', 'Notification management endpoints')
+    .addTag('Health', 'Service health check endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
-  const port = process.env.API_GATEWAY_PORT || 3000;
+  const port = process.env.PORT || 3000;
   await app.listen(port);
 
+  logger.log(`=`.repeat(80));
   logger.log(`|=> API Gateway running on: http://localhost:${port}`);
-  logger.log(`|=> Swagger docs available at: http://localhost:${port}/api/docs`);
+  logger.log(`|=> Swagger docs: http://localhost:${port}/api/docs`);
+  logger.log(`|=> Health check: http://localhost:${port}/health`);
+  logger.log(`|=> Auth endpoints: http://localhost:${port}/auth/*`);
+  logger.log(`|=> Notification endpoints: http://localhost:${port}/api/v1/notifications`);
+  logger.log(`=`.repeat(80));
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to start API Gateway:', error);
+  process.exit(1);
+});
