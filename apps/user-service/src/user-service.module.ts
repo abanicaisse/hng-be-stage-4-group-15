@@ -7,6 +7,8 @@ import { CacheModule } from '@app/cache';
 import { UsersModule } from './users/users.module';
 import { HealthModule } from './health/health.module';
 import { AllExceptionsFilter, LoggingInterceptor, TransformInterceptor } from '@app/common';
+import { UserServiceController } from './user-service.controller';
+import { UserServiceService } from './user-service.service';
 
 @Module({
   imports: [
@@ -20,7 +22,9 @@ import { AllExceptionsFilter, LoggingInterceptor, TransformInterceptor } from '@
     UsersModule,
     HealthModule,
   ],
+  controllers: [UserServiceController],
   providers: [
+    UserServiceService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,

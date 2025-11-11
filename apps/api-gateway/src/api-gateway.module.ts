@@ -20,6 +20,8 @@ import { HealthModule } from './health/health.module';
 import { AuthGuard } from '@app/common';
 import { AllExceptionsFilter } from '@app/common';
 import { LoggingInterceptor, TransformInterceptor } from '@app/common';
+import { ApiGatewayController } from './api-gateway.controller';
+import { ApiGatewayService } from './api-gateway.service';
 
 @Module({
   imports: [
@@ -42,7 +44,9 @@ import { LoggingInterceptor, TransformInterceptor } from '@app/common';
     NotificationsModule,
     HealthModule,
   ],
+  controllers: [ApiGatewayController],
   providers: [
+    ApiGatewayService,
     Reflector,
     {
       provide: APP_GUARD,
