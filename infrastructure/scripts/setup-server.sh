@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🔧 Setting up server for Notification System..."
+echo "Setting up server for Notification System..."
 
 # Color codes
 GREEN='\033[0;32m'
@@ -20,6 +20,13 @@ print_status() {
 if [ "$EUID" -ne 0 ]; then 
     echo "Please run as root or with sudo"
     exit 1
+fi
+
+# Get the actual user if running with sudo
+if [ -n "$SUDO_USER" ]; then
+    ACTUAL_USER="$SUDO_USER"
+else
+    ACTUAL_USER="ubuntu"
 fi
 
 # Update system
@@ -45,7 +52,7 @@ if ! command -v docker &> /dev/null; then
     print_status "Installing Docker..."
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
-    usermod -aG docker $SUDO_USER
+    usermod -aG docker "$ACTUAL_USER"
     rm get-docker.sh
 else
     print_status "Docker already installed"
@@ -80,31 +87,31 @@ ufw allow 3000/tcp    # API Gateway (optional, use nginx instead)
 
 # Create project directory
 PROJECT_DIR="/opt/notification-system"
-mkdir -p $PROJECT_DIR
-chown -R $SUDO_USER:$SUDO_USER $PROJECT_DIR
+mkdir -p "$PROJECT_DIR"
+chown -R "$ACTUAL_USER":"$ACTUAL_USER" "$PROJECT_DIR"
 
 # Create logs directory
-mkdir -p $PROJECT_DIR/logs
-mkdir -p $PROJECT_DIR/backups
+mkdir -p "$PROJECT_DIR/logs"
+mkdir -p "$PROJECT_DIR/backups"
 
 # Configure log rotation
-cat > /etc/logrotate.d/notification-system <<EOF
-$PROJECT_DIR/logs/*.log {
+cat > /etc/logrotate.d/notification-system <<'EOF'
+/opt/notification-system/logs/*.log {
     daily
     rotate 14
     compress
     delaycompress
     notifempty
-    create 0640 $SUDO_USER $SUDO_USER
+    create 0640 ubuntu ubuntu
     sharedscripts
     postrotate
-        docker-compose -f $PROJECT_DIR/docker-compose.prod.yml restart notification-services
+        docker-compose -f /opt/notification-system/docker-compose.prod.yml restart notification-services
     endscript
 }
 EOF
 
 # Set up fail2ban for SSH
-cat > /etc/fail2ban/jail.local <<EOF
+cat > /etc/fail2ban/jail.local <<'EOF'
 [sshd]
 enabled = true
 port = 22
@@ -116,7 +123,7 @@ systemctl enable fail2ban
 systemctl restart fail2ban
 
 # Configure system limits
-cat >> /etc/security/limits.conf <<EOF
+cat >> /etc/security/limits.conf <<'EOF'
 *               soft    nofile          65536
 *               hard    nofile          65536
 root            soft    nofile          65536
@@ -124,7 +131,7 @@ root            hard    nofile          65536
 EOF
 
 # Optimize kernel parameters for Docker
-cat >> /etc/sysctl.conf <<EOF
+cat >> /etc/sysctl.conf <<'EOF'
 net.ipv4.ip_forward = 1
 vm.max_map_count = 262144
 fs.file-max = 65536
