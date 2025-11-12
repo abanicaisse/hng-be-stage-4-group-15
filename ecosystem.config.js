@@ -66,5 +66,21 @@ module.exports = {
       out_file: './logs/template-service-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },
+    {
+      name: 'email-service',
+      script: 'dist/apps/email-service/main.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      min_uptime: '10s',
+      env: {
+        PORT: 3002,
+        NODE_ENV: 'development',
+      },
+      error_file: './logs/email-service-error.log',
+      out_file: './logs/email-service-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
   ],
 };
