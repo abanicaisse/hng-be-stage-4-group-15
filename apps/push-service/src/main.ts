@@ -3,6 +3,7 @@ import { PushServiceModule } from './push-service.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(PushServiceModule);
-  await app.listen(process.env.PUSH_SERVICE_PORT ?? 3004);
+  await app.listen(process.env.PUSH_SERVICE_PORT || 3003);
+  console.log(' Push Service running on port 3003');
 }
 bootstrap();
