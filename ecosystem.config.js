@@ -50,5 +50,21 @@ module.exports = {
       out_file: './logs/user-service-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },
+    {
+      name: 'template-service',
+      script: 'dist/apps/template-service/main.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      min_uptime: '10s',
+      env: {
+        PORT: 3003,
+        NODE_ENV: 'development',
+      },
+      error_file: './logs/template-service-error.log',
+      out_file: './logs/template-service-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
   ],
 };

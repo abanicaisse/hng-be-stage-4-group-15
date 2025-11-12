@@ -14,6 +14,7 @@ import { CacheModule } from '@app/cache';
 // Feature modules
 import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { TemplatesModule } from './templates/templates.module';
 import { HealthModule } from './health/health.module';
 
 // Guards, Filters, Interceptors
@@ -42,6 +43,7 @@ import { ApiGatewayService } from './api-gateway.service';
     CacheModule,
     AuthModule,
     NotificationsModule,
+    TemplatesModule,
     HealthModule,
   ],
   controllers: [ApiGatewayController],
