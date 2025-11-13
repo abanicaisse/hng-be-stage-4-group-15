@@ -60,12 +60,10 @@ COPY package.json pnpm-lock.yaml ./
 # This fixes bcrypt and Prisma errors.
 COPY --from=builder /app/node_modules ./node_modules
 
-# We no longer need to copy this, as the prod config doesn't run Prisma Studio
-# --- FIX 2: We DO need this for Prisma Studio to run. Re-enabling. ---
-# --- EDIT: User's new config REMOVES prisma-studio. This is no longer needed. ---
-# COPY --from=builder /app/libs/database/prisma ./libs/database/prisma
-
-# --- End of new logic ---
+# --- FIX: Copy Prisma schema for 'pnpm rebuild' ---
+# The 'pnpm rebuild' command triggers a 'postinstall' script for Prisma,
+# which runs 'prisma generate'. That command requires the schema file.
+COPY --from=builder /app/libs/database/prisma ./libs/database/prisma
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
