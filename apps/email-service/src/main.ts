@@ -4,6 +4,20 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { EmailServiceModule } from './email-service.module';
 import { ConfigService } from '@nestjs/config';
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  const logger = new Logger('UnhandledRejection');
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process in production, just log it
+});
+
+process.on('uncaughtException', (error) => {
+  const logger = new Logger('UncaughtException');
+  logger.error('Uncaught Exception:', error);
+  // Give time for logs to flush, then exit
+  setTimeout(() => process.exit(1), 1000);
+});
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
@@ -55,4 +69,8 @@ async function bootstrap() {
   logger.log(`=`.repeat(60));
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  const logger = new Logger('Bootstrap');
+  logger.error('Failed to start Email Service:', error);
+  process.exit(1);
+});

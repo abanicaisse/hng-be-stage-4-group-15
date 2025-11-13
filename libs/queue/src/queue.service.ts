@@ -43,12 +43,29 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       this.logger.error('RabbitMQ disconnected', err);
     });
 
+    this.connection.on('connectFailed', (err) => {
+      this.logger.error('RabbitMQ connection failed', err);
+    });
+
     this.channelWrapper = this.connection.createChannel({
       json: true,
       setup: async (channel: ConfirmChannel) => {
         this.logger.log('RabbitMQ channel created');
+
+        // Handle channel errors
+        channel.on('error', (err) => {
+          this.logger.error('Channel error:', err);
+        });
+
+        channel.on('close', () => {
+          this.logger.warn('Channel closed');
+        });
       },
     });
+
+    // Wait for connection to be established
+    await this.channelWrapper.waitForConnect();
+    this.logger.log('RabbitMQ channel ready');
   }
 
   private async setupExchangesAndQueues() {
@@ -120,6 +137,18 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     options?: { prefetch?: number },
   ): Promise<void> {
     await this.channelWrapper.addSetup(async (channel: ConfirmChannel) => {
+      // Ensure queue exists before consuming
+      const queueOptions = {
+        durable: true,
+        arguments: {
+          'x-dead-letter-exchange': EXCHANGE_NAMES.DLX,
+          'x-message-ttl': 86400000, // 24 hours
+        },
+      };
+
+      await channel.assertQueue(queueName, queueOptions);
+      this.logger.log(`Queue asserted: ${queueName}`);
+
       await channel.prefetch(options?.prefetch ?? 1);
 
       await channel.consume(
@@ -163,6 +192,19 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   async publishToQueue(queueName: string, message: any): Promise<void> {
     try {
+      await this.channelWrapper.addSetup(async (channel: ConfirmChannel) => {
+        // Ensure queue exists before publishing
+        const queueOptions = {
+          durable: true,
+          arguments: {
+            'x-dead-letter-exchange': EXCHANGE_NAMES.DLX,
+            'x-message-ttl': 86400000, // 24 hours
+          },
+        };
+
+        await channel.assertQueue(queueName, queueOptions);
+      });
+
       const publishOptions: Options.Publish = {
         persistent: true,
         contentType: 'application/json',

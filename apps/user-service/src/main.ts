@@ -4,6 +4,18 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { UserServiceModule } from './user-service.module';
 import { AllExceptionsFilter, LoggingInterceptor, TransformInterceptor } from '@app/common';
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  const logger = new Logger('UnhandledRejection');
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  const logger = new Logger('UncaughtException');
+  logger.error('Uncaught Exception:', error);
+  setTimeout(() => process.exit(1), 1000);
+});
+
 async function bootstrap() {
   const logger = new Logger('UserService');
   const app = await NestFactory.create(UserServiceModule, {

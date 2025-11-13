@@ -3,6 +3,18 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { TemplateServiceModule } from './template-service.module';
 
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  const logger = new Logger('UnhandledRejection');
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  const logger = new Logger('UncaughtException');
+  logger.error('Uncaught Exception:', error);
+  setTimeout(() => process.exit(1), 1000);
+});
+
 async function bootstrap() {
   const logger = new Logger('TemplateService');
 
