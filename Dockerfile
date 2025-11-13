@@ -20,11 +20,22 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Generate Prisma Client
+# --- FIX 1: Patch schema.prisma to include the 'linux-musl' binary target ---
+# This fixes the PrismaClientInitializationError at runtime.
+# --- FIX: Corrected regex (removed extra " before ]) ---
+RUN sed -i 's/\(binaryTargets *= *\[.*\)\]/\1, "linux-musl"]/' libs/database/prisma/schema.prisma
+
+# Generate Prisma Client (now with the correct targets)
 RUN pnpm run prisma:generate
 
 # Build all services
 RUN pnpm run build:all
+
+# --- NEW DISK-EFFICIENT STEP ---
+# Prune development dependencies HERE, in the builder,
+# so the final node_modules is small.
+# --ignore-scripts prevents postinstall from running after prune
+RUN pnpm prune --prod --ignore-scripts
 
 # Stage 2: Production
 # We lock the version to 3.17 to ensure OpenSSL compatibility
@@ -41,27 +52,32 @@ WORKDIR /app
 
 # --- This is the new, robust logic ---
 
-# Copy package.json to be able to run pnpm prune
-COPY package.json ./
+# Copy package.json AND lockfile (needed for pnpm rebuild)
+COPY package.json pnpm-lock.yaml ./
 
-# Copy the ENTIRE node_modules from builder
-# This fixes BOTH the bcrypt AND the Prisma Engine errors
-# because it brings all native binaries and the fully generated client.
+# Copy the ALREADY-PRUNED node_modules from builder
+# This is much smaller and should not fill the disk.
+# This fixes bcrypt and Prisma errors.
 COPY --from=builder /app/node_modules ./node_modules
 
-# Remove all development dependencies
-RUN pnpm prune --prod
-
-# Copy the Prisma schema for Prisma Studio
-# This fixes the "Could not load schema" error
-COPY libs/database/prisma ./libs/database/prisma
+# We no longer need to copy this, as the prod config doesn't run Prisma Studio
+# --- FIX 2: We DO need this for Prisma Studio to run. Re-enabling. ---
+# --- EDIT: User's new config REMOVES prisma-studio. This is no longer needed. ---
+# COPY --from=builder /app/libs/database/prisma ./libs/database/prisma
 
 # --- End of new logic ---
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
-# --- FIX: Copy the correct production config file ---
-COPY ecosystem.config.prod.js ./
+# --- FIX: Copy the correct, user-renamed config file ---
+COPY ecosystem.config.js ./
+
+# --- NEW FIX: Make all script paths in the config file absolute ---
+RUN sed -i "s|script: 'dist/|script: '/app/dist/|g" ecosystem.config.js
+
+# --- NEW FIX: Rebuild native dependencies (bcrypt, prisma) ---
+# This compiles them against the production env (with openssl1.1-compat)
+RUN pnpm rebuild
 
 # Create logs directory
 RUN mkdir -p logs
@@ -74,5 +90,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start services with PM2
-# --- FIX: Start the correct production config file ---
-CMD ["pm2-runtime", "start", "ecosystem.config.prod.js"]
+# --- FIX: Use pm2-runtime with the correct config file name ---
+# Now that you've fixed the filename, this is the correct command.
+CMD ["pm2-runtime", "ecosystem.config.js"]
