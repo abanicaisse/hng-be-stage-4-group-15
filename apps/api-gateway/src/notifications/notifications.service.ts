@@ -36,7 +36,6 @@ export class NotificationsService {
       return result;
     }
 
-    // Validate user exists and get preferences
     const user = await this.databaseService.user.findUnique({
       where: { id: createNotificationDto.user_id },
     });
@@ -54,7 +53,6 @@ export class NotificationsService {
       throw new ConflictException('User has disabled push notifications');
     }
 
-    // Create notification record
     const notification = await this.databaseService.notification.create({
       data: {
         user_id: createNotificationDto.user_id,
@@ -68,7 +66,6 @@ export class NotificationsService {
       },
     });
 
-    // Prepare queue message
     const queueMessage: QueueMessage = {
       notification_id: notification.id,
       user_id: notification.user_id,

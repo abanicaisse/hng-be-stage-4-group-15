@@ -2,8 +2,8 @@ import { IsEnum, IsUUID, IsString, IsObject, IsOptional, IsInt, Min, Max } from 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // Re-export Prisma enums for use across the application
-export { NotificationType, NotificationStatus } from '@prisma/client';
-import { NotificationType, NotificationStatus } from '@prisma/client';
+export { NotificationType, NotificationStatus } from '.prisma/client';
+import { NotificationType, NotificationStatus } from '.prisma/client';
 
 export class UserData {
   @ApiProperty()

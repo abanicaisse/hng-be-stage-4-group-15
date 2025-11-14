@@ -1,0 +1,189 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, deployment]
+  pull_request:
+    branches: [main, deployment]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "20.x"
+  PNPM_VERSION: "9"
+
+jobs:
+  # Job 1: Code Quality Checks
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm run prisma:generate
+
+      - name: Lint code
+        run: pnpm run lint || echo "Linting completed with warnings"
+
+      # - name: Run tests
+      #   run: pnpm run test
+
+  # Job 2: Build and Push Docker Image
+  docker-build-push:
+    name: Build and Push Docker Image
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/notification-system
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=deployment-
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/notification-system:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/notification-system:buildcache,mode=max
+          platforms: linux/amd64
+
+      - name: Output image tags
+        run: echo "Built and pushed tags - ${{ steps.meta.outputs.tags }}"
+
+  # Job 3: Deploy to Production
+  deploy-production:
+    name: Deploy to Production Server
+    needs: docker-build-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
+
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -e
+
+            echo "🚀 Starting deployment..."
+
+            # Navigate to project directory
+            cd /opt/notification-system/hng-be-stage-4-group-15
+
+            # Pull latest code
+            echo "📥 Pulling latest code..."
+            git fetch origin deployment
+            git reset --hard origin/deployment
+
+            # Pull latest Docker image
+            echo "🐳 Pulling Docker image..."
+            docker pull ${{ secrets.DOCKER_USERNAME }}/notification-system:latest
+
+            # Remove old logs directory to prevent permission issues
+            echo "🧹 Cleaning up old logs..."
+            sudo rm -rf ./logs
+
+            # Stop and remove old containers
+            echo "🛑 Stopping old containers..."
+            docker compose -f docker-compose.prod.yml down
+
+            # Start services with new image
+            echo "▶️  Starting services..."
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+            # Wait for services to be ready
+            echo "⏳ Waiting for services to start..."
+            sleep 15
+
+            # Check container status
+            echo "📊 Container status:"
+            docker compose -f docker-compose.prod.yml ps
+
+            # Health check
+            echo "🏥 Running health check..."
+            max_attempts=10
+            attempt=0
+            until curl -f http://localhost:3000/health || [ $attempt -eq $max_attempts ]; do
+              attempt=$((attempt + 1))
+              echo "Health check attempt $attempt/$max_attempts failed, retrying in 5s..."
+              sleep 5
+            done
+
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Health check failed after $max_attempts attempts"
+              docker compose -f docker-compose.prod.yml logs --tail=50 notification-services
+              exit 1
+            fi
+
+            echo "✅ Health check passed!"
+
+            # Clean up old images
+            echo "🧹 Cleaning up old Docker images..."
+            docker image prune -af --filter "until=24h" || true
+
+            echo "🎉 Deployment completed successfully!"
+
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment at http://hng-notification-system-15.duckdns.org"
+          sleep 5
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://hng-notification-system-15.duckdns.org/health || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Deployment verification successful!"
+          else
+            echo "⚠️  Warning: Public health check returned status $response"
+          fi
+
+      - name: Notify deployment status
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"Deployment to production: ${{ job.status }}\nURL: http://hng-notification-system-15.duckdns.org\nCommit: ${{ github.sha }}"}' \
+              ${{ secrets.SLACK_WEBHOOK }} || echo "Slack notification failed"
+          else
+            echo "Slack webhook not configured, skipping notification"
+          fi

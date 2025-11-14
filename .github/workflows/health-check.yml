@@ -1,0 +1,59 @@
+name: Health Check
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Check Service Health
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/deployment' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check API Gateway Health
+        id: health_check
+        run: |
+          echo "Checking API Gateway health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://hng-notification-system-15.duckdns.org/health || echo "000")
+
+          if [ "$response" = "200" ]; then
+            echo "✅ API Gateway is healthy (HTTP $response)"
+            echo "status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "❌ API Gateway health check failed (HTTP $response)"
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Check Individual Services
+        if: success()
+        continue-on-error: true
+        run: |
+          echo "Checking individual microservices..."
+
+          # Check User Service
+          user_response=$(curl -s -o /dev/null -w "%{http_code}" http://hng-notification-system-15.duckdns.org/api/v1/users/health || echo "000")
+          echo "User Service: HTTP $user_response"
+
+          # Check Email Service
+          email_response=$(curl -s -o /dev/null -w "%{http_code}" http://hng-notification-system-15.duckdns.org/api/v1/email/health || echo "000")
+          echo "Email Service: HTTP $email_response"
+
+          # Check Template Service
+          template_response=$(curl -s -o /dev/null -w "%{http_code}" http://hng-notification-system-15.duckdns.org/api/v1/templates/health || echo "000")
+          echo "Template Service: HTTP $template_response"
+
+      - name: Notify on failure
+        if: failure()
+        continue-on-error: true
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"⚠️ Health check failed for notification system\nURL: http://hng-notification-system-15.duckdns.org\nTime: $(date -u +%Y-%m-%dT%H:%M:%SZ)"}' \
+              ${{ secrets.SLACK_WEBHOOK }} || echo "Slack notification failed"
+          else
+            echo "Slack webhook not configured, skipping notification"
+          fi
