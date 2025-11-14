@@ -73,9 +73,12 @@ COPY ecosystem.config.js ./
 # --- NEW FIX: Make all script paths in the config file absolute ---
 RUN sed -i "s|script: 'dist/|script: '/app/dist/|g" ecosystem.config.js
 
-# --- NEW FIX: Rebuild native dependencies (bcrypt, prisma) ---
-# This compiles them against the production env (with openssl1.1-compat)
-RUN pnpm rebuild
+# --- FINAL FIX: Rebuild native dependencies (bcrypt, prisma) ---
+# Install build-tools, run rebuilds, then remove build-tools in one layer
+RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+    pnpm rebuild && \
+    pnpm rebuild bcrypt && \
+    apk del .build-deps
 
 # Create logs directory
 RUN mkdir -p logs
