@@ -133,8 +133,12 @@ COPY libs/database/prisma ./libs/database/prisma
 RUN mkdir -p logs && \
     chown -R node:node /app
 
-# Switch to non-root user for security
-USER node
+# Install su-exec for user switching
+RUN apk add --no-cache su-exec
+
+# Copy and set up entrypoint script to fix permissions at runtime
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Expose ports for all microservices
 # 3000: API Gateway
@@ -150,7 +154,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Use entrypoint to fix permissions before starting PM2
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Start all services using PM2 in runtime mode
 CMD ["pm2-runtime", "start", "ecosystem.config.js"]
