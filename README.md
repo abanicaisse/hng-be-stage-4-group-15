@@ -147,26 +147,9 @@ docker-compose -f docker-compose.prod.yml ps
 
 ---
 
-## 📚 Documentation
-
-We provide comprehensive documentation for all aspects of the system:
-
-| Document | Description |
-|----------|-------------|
-| **[IMPLEMENTATION.md](IMPLEMENTATION.md)** | Complete system architecture and request flows |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Detailed deployment guide for production |
-| **[QUICK-START-DEPLOYMENT.md](QUICK-START-DEPLOYMENT.md)** | Beginner-friendly deployment guide |
-| **[SERVER-COMMANDS.md](SERVER-COMMANDS.md)** | Quick reference for server management |
-| **[RABBITMQ-FIX.md](RABBITMQ-FIX.md)** | Troubleshooting RabbitMQ issues |
-| **[FIX-SUMMARY.md](FIX-SUMMARY.md)** | Summary of recent fixes |
-
----
-
 ## 🚢 Deployment
 
 ### Production Deployment
-
-See **[QUICK-START-DEPLOYMENT.md](QUICK-START-DEPLOYMENT.md)** for step-by-step instructions.
 
 **Quick Deploy:**
 
@@ -200,7 +183,7 @@ docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
 We use GitHub Actions for automated deployments:
 
 - **Workflow:** `.github/workflows/ci-cd.yml`
-- **Triggers:** Push to `deployment` branch
+- **Triggers:** Push to `main` branch
 - **Steps:** Lint → Test → Build → Docker Push → Deploy
 
 ---
@@ -249,10 +232,10 @@ PUT    /api/v1/users/:id/preferences
 
 #### Health Checks
 ```http
-GET /health                    # API Gateway
-GET /api/v1/email/health      # Email Service
-GET /api/v1/users/health      # User Service
-GET /health                    # Template Service
+GET /health                    # API Gateway (Port: 3000)
+GET /health                    # Email Service (Port: 3002)
+GET //health                   # User Service (Port: 3001)
+GET /health                    # Template Service (Port: 3003)
 ```
 
 ### Example Request
@@ -306,20 +289,19 @@ curl -X POST http://localhost:3000/api/v1/notifications \
 │   ├── nginx/
 │   ├── rabbitmq/
 │   └── scripts/
-└── prisma/                 # Database schema
 ```
 
 ### Scripts
 
 ```bash
 # Development
-pnpm run start:dev:gateway      # Start API Gateway
-pnpm run start:dev:email        # Start Email Service
-pnpm run start:dev:all          # Start all services
+pnpm run start:dev:api-gateway          # Start API Gateway
+pnpm run start:dev:email-service        # Start Email Service
+pnpm run start:dev:all                  # Start all services
 
 # Build
 pnpm run build                  # Build all services
-pnpm run build:gateway          # Build specific service
+pnpm run build:api-gateway          # Build specific service
 
 # Database
 pnpm run prisma:migrate:dev     # Run migrations (dev)
@@ -328,7 +310,7 @@ pnpm run prisma:studio          # Open Prisma Studio
 pnpm run prisma:generate        # Generate Prisma client
 
 # Testing
-pnpm run test                   # Unit tests
+pnpm run test                  # Unit tests
 pnpm run test:e2e              # E2E tests
 pnpm run test:cov              # Coverage report
 
@@ -386,13 +368,13 @@ pnpm run test:cov
 
 ### Manual Testing
 
-Use the provided Postman collection or test via Swagger UI at `http://localhost:3000/api/docs`.
+Test via Swagger UI at `http://localhost:${SERVICE_PORT}/api/docs#`.
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Common Issues
+### Common Issues on Server
 
 #### 1. Services Unhealthy
 
@@ -406,12 +388,10 @@ docker-compose -f docker-compose.prod.yml restart
 
 #### 2. RabbitMQ Queue Errors
 
-See **[RABBITMQ-FIX.md](RABBITMQ-FIX.md)** for detailed solutions.
-
 Quick fix:
 ```bash
 cd /opt/notification-system/hng-be-stage-4-group-15
-git pull origin deployment
+git pull origin main
 sudo ./infrastructure/scripts/rebuild-services.sh
 ```
 
@@ -427,9 +407,8 @@ docker-compose -f docker-compose.prod.yml exec notification-services pnpm run pr
 
 ### Getting Help
 
-1. Check **[SERVER-COMMANDS.md](SERVER-COMMANDS.md)** for common commands
-2. View logs: `docker-compose logs -f notification-services`
-3. Check health: `curl http://localhost:3000/health`
+1. View logs: `docker-compose logs -f notification-services`
+1. Check health: `curl http://localhost:3000/health`
 
 ---
 
@@ -438,7 +417,7 @@ docker-compose -f docker-compose.prod.yml exec notification-services pnpm run pr
 This project was built for HNG Stage 4 Backend Task by Group 15.
 
 ### Team Members
-- Abanica Isse - Lead Developer
+- Aba Nicaisse - Lead Developer
 
 ---
 
@@ -450,8 +429,8 @@ This project is licensed under the MIT License.
 
 ## 🔗 Links
 
-- **Live API:** [Production URL]
-- **API Docs:** [Production URL]/api/docs
+- **Live API:** [GATEWAY_URL](http://hng-notification-system-15.duckdns.org)
+- **API Docs:** [GATEWAY_URL](http://hng-notification-system-15.duckdns.org)/api/docs
 - **GitHub:** https://github.com/abanicaisse/hng-be-stage-4-group-15
 - **HNG Internship:** https://hng.tech
 
@@ -467,15 +446,15 @@ This project is licensed under the MIT License.
 
 ---
 
-## 🎯 Roadmap
+## 🎯 Future Improvements
 
 - [ ] SMS notifications
 - [ ] WhatsApp integration
-- [ ] Webhook support
+- [x] Webhook support (Slack Notifications)
 - [ ] Analytics dashboard
 - [ ] Multi-language templates
 - [ ] Scheduled notifications
 
 ---
 
-**Built with ❤️ using NestJS and TypeScript**
+**Built with ❤️ by Aba Nicaisse using NestJS and TypeScript**
