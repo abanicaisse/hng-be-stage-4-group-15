@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, deployment]
+    branches: [main]
   pull_request:
-    branches: [main, deployment]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -49,7 +49,7 @@ jobs:
     name: Build and Push Docker Image
     needs: lint-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
@@ -94,7 +94,7 @@ jobs:
     name: Deploy to Production Server
     needs: docker-build-push
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/deployment'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Deploy to server via SSH
@@ -114,8 +114,8 @@ jobs:
 
             # Pull latest code
             echo "📥 Pulling latest code..."
-            git fetch origin deployment
-            git reset --hard origin/deployment
+            git fetch origin main
+            git reset --hard origin/main
 
             # Pull latest Docker image
             echo "🐳 Pulling Docker image..."
