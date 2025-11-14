@@ -149,5 +149,8 @@ EXPOSE 3000 3001 3002 3003 3004 5555
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
+# Use entrypoint to fix permissions before starting PM2
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
 # Start all services using PM2 in runtime mode
 CMD ["pm2-runtime", "start", "ecosystem.config.js"]
