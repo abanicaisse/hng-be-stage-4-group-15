@@ -2,8 +2,8 @@ import { IsString, IsObject, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // Re-export Prisma enum for use across the application
-export { TemplateType } from '@prisma/client';
-import { TemplateType } from '@prisma/client';
+export { TemplateType } from '.prisma/client';
+import { TemplateType } from '.prisma/client';
 
 export class CreateTemplateDto {
   @ApiProperty()

@@ -104,8 +104,10 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+      args:
+        - NODE_ENV=production
     container_name: notification-services-prod
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000" # API Gateway
       - "3001:3001" # User Service
@@ -114,7 +116,7 @@ services:
       - "3004:3004" # Push Service
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connect_timeout=30
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -152,18 +154,17 @@ services:
       - notification-network
     volumes:
       - ./logs:/app/logs
+      - notification-data:/app/data
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
-          "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+          "CMD-SHELL",
+          'node -e "require(''http'').get(''http://localhost:3000/health'', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1',
         ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
     deploy:
       resources:
         limits:
@@ -204,6 +205,8 @@ volumes:
   redis_data:
     driver: local
   rabbitmq_data:
+    driver: local
+  notification-data:
     driver: local
 
 networks:

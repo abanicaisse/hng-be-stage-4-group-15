@@ -78,7 +78,7 @@ export class TemplatesService {
     ]);
 
     return {
-      data: templates.map((t) => this.formatTemplateResponse(t)),
+      data: templates.map((t: any) => this.formatTemplateResponse(t)),
       meta: {
         total,
         page,

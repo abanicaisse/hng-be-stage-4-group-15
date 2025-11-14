@@ -80,23 +80,5 @@ module.exports = {
       merge_logs: true,
       time: true,
     },
-    {
-      name: 'prisma-studio',
-      script: 'npx',
-      args: 'prisma studio',
-      interpreter: 'none',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_restarts: 10,
-      min_uptime: '10s',
-      env: {
-        PORT: 5555,
-        NODE_ENV: 'development',
-      },
-      error_file: './logs/prisma-studio-error.log',
-      out_file: './logs/prisma-studio-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    },
   ],
 };
